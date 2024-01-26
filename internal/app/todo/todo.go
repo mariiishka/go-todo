@@ -52,10 +52,24 @@ func (t *Todos) Delete(id int) error {
 	lastIndex := len(list) - 1
 
 	if index < 0 || index > lastIndex {
-		return errors.New("invalid index")
+		return errors.New("invalid task ID")
 	}
 
 	*t = append(list[:index], list[index+1:]...)
+
+	return nil
+}
+
+func (t *Todos) Change(id int, text string) error {
+	list := *t
+	index := id - 1
+	lastIndex := len(list) - 1
+
+	if index < 0 || index > lastIndex {
+		return errors.New("invalid task ID")
+	}
+
+	list[index].Task = text
 
 	return nil
 }
@@ -89,8 +103,19 @@ func (t *Todos) Store(filename string) error {
 
 	data, err := json.Marshal(t)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return os.WriteFile(filename, data, 0644)
+}
+
+func (t *Todos) Clear(filename string) error {
+	const op = "internal.todo.Clear"
+
+	err := os.Remove(filename)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
 }
