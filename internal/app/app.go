@@ -27,12 +27,16 @@ func Run() {
 		complete int
 		delete   int
 		list     bool
+		change   int
+		clear    bool
 	)
 
 	flag.BoolVar(&add, "add", false, "add a new todo")
 	flag.IntVar(&complete, "complete", 0, "mark todo as completed")
 	flag.IntVar(&delete, "delete", 0, "delete todo")
 	flag.BoolVar(&list, "list", false, "list all todos")
+	flag.IntVar(&change, "change", 0, "change todo")
+	flag.BoolVar(&clear, "clear", false, "remove all todos")
 
 	flag.Parse()
 
@@ -45,7 +49,7 @@ func Run() {
 
 	switch {
 	case add:
-		task, err := Input(os.Stdin, flag.Args()...)
+		task, err := ReadInput()
 
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
@@ -94,6 +98,39 @@ func Run() {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
 		}
+	case change > 0:
+		if change <= 0 || change > len(*todos) {
+			fmt.Fprintln(os.Stderr, errors.New("invalid task ID"))
+			os.Exit(1)
+		}
+
+		newText, err := ReadInput()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+
+		err = todos.Change(change, newText)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+
+		err = todos.Store(todoFile)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+
+		fmt.Fprintln(os.Stdout, "task changed successfully!")
+	case clear:
+		err := todos.Clear(todoFile)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+
+		fmt.Fprintln(os.Stdout, "todos removed successfully!")
 	default:
 		fmt.Fprintln(os.Stdout, "invalid command")
 		os.Exit(1)
@@ -164,4 +201,19 @@ func Input(r io.Reader, args ...string) (string, error) {
 	}
 
 	return text, nil
+}
+
+func ReadInput() (string, error) {
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Print("Create a new todo: ")
+
+	todo, err := reader.ReadString('\n')
+	if err != nil {
+		return "", errors.New("empty todo is not allowed")
+	}
+
+	todo = strings.TrimSpace(todo)
+
+	return todo, nil
 }
